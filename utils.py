@@ -5,7 +5,9 @@ from tqdm import tqdm
 from xeger import Xeger
 from sklearn.metrics import accuracy_score
 import numpy as np
+import tensorflow_hub as hub
 import models
+import itertools
 
 def calculate_minus_accuracy(thresholds, probs, labels):
     preds = (probs > thresholds).astype(np.int)
@@ -74,20 +76,20 @@ def train_test_split(data, train_size=None, train_num=None):
     return train, test
 
                             
-def train_model(model, train, valid=None, mode='sim', batch_size=512, epochs=40): # TBD
+def train_model(model, train, valid=None, mode='sim', batch_size=256, epochs=150): # TBD
     session = tf.compat.v1.Session()
     session.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.tables_initializer()])
     if mode=='sim':
         model.fit(train, session, valid=valid, batch_size=batch_size)
     elif mode=='mlp':
-        model.fit(train, session, valid=valid, epochs=epochs)
+        model.fit(train, session, valid=valid, epochs=epochs, batch_size=batch_size)
     else:
         raise Exception("Unknown mode")
     session.close()
     return model
 
 
-def evaluate_model(model, test, batch_size=512):
+def evaluate_model(model, test, batch_size=256):
     session = tf.compat.v1.Session()
     session.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.tables_initializer()])
     preds, labels = [], []
@@ -100,13 +102,38 @@ def evaluate_model(model, test, batch_size=512):
         labels.append(label)
     preds = np.concatenate(preds, axis=0)
     labels = np.concatenate(labels, axis=0)
+    session.close()
     return accuracy_score(preds, labels)
 
 
 def train_and_eval_model(model, train, valid, test, mode='sim'):
-    # Similarity multilabel:
     train_model(model, train, valid, mode=mode)
     return evaluate_model(model, test)
+
+def train_and_eval_on_datasets(model, data, mode='sim'):
+    scores = {
+        key:train_and_eval_model(
+            model, train, data['valid'], data['test'], mode=mode
+        ) for key, train in tqdm(data['train'].items())
+    }
+    return scores
+
+def provide_models(encoder, num_intents=22): # generator, that provides all possible model configurations
+    modes = ['sim', 'mlp']
+    multilabels = [True, False]
+    for mode, multilabel in itertools.product(modes, multilabels):
+        if mode == 'sim':
+            yield mode, multilabel, models.Similarity(encoder, multilabel=multilabel)
+        else:
+            yield mode, multilabel, models.MLP(encoder, multilabel=multilabel, num_intents=num_intents)
+            
+def eval_all_models(encoder, data, num_intents=22):
+    results = {}
+    for mode, multilabel, model in provide_models(encoder, num_intents):
+        signature = mode[0] + ('ml' if multilabel else 'mc') # first letter of mode ('s' for similarity / 'm' for mlp), 
+        print(f"Training: {signature}")
+        results[signature] = train_and_eval_on_datasets(model, data, mode)
+    return results
 
 
 similarity_measures = {
