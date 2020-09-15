@@ -139,7 +139,7 @@ class MLP(Classifier):
             cp_callback = tf.keras.callbacks.ModelCheckpoint(
                 filepath=self.checkpointdir,
                 save_weights_only=True,
-                monitor='val_accuracy',
+                monitor='val_acc',
                 mode='max',
                 save_best_only=True)
             callbacks += [cp_callback]
@@ -163,7 +163,7 @@ class MLP(Classifier):
             cp_callback = tf.keras.callbacks.ModelCheckpoint(
                 filepath=self.checkpointdir,
                 save_weights_only=True,
-                monitor='val_accuracy',
+                monitor='val_acc',
                 mode='max',
                 save_best_only=True)
             self.callbacks = [cp_callback]
@@ -190,7 +190,7 @@ class MLP(Classifier):
             self._reinit(session)
             
         self.thresholds = [0.5]*len(train)
-        self.intent_order = [intent for intent in train]
+        self.intent_order = np.array([intent for intent in train])
         x_train, y_train = self._prepare_dataset(train, session, batch_size)
         if valid:
             x_valid, y_valid = self._prepare_dataset(valid, session, batch_size)
@@ -202,7 +202,6 @@ class MLP(Classifier):
             validation_data=(x_valid, y_valid),
             callbacks=self.callbacks, 
             verbose=0)
-        self.nn.load_weights(self.checkpointdir)
         self.is_fitted = True
         if self.multilabel and valid:
             self.fit_thresholds(valid, session, batch_size)
