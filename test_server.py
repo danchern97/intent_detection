@@ -14,7 +14,8 @@ sentences = {
         "sentences":[
             "yes",
             "no",
-            "i am good"
+            "how are you?",
+            "you are dumb"
             ]
         }
 

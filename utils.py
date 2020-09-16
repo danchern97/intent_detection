@@ -5,9 +5,18 @@ from tqdm import tqdm
 from xeger import Xeger
 from sklearn.metrics import accuracy_score
 import numpy as np
+import nltk
 import tensorflow_hub as hub
 import models
+import re
 import itertools
+
+def sent_tokenize(text):
+    matches = list(re.finditer("[\.?!](?=[A-Z][^.])", text))
+    starts = [0] + [elem.start()+1 for elem in matches] + [len(text)]
+    segments = [text[start:end] for start, end in zip(starts[:-1], starts[1:])]
+    answer = list(itertools.chain.from_iterable(map(nltk.tokenize.sent_tokenize, segments))) 
+    return answer
 
 def calculate_minus_accuracy(thresholds, probs, labels):
     preds = (probs > thresholds).astype(np.int)

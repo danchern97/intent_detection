@@ -1,3 +1,6 @@
 env/*
+checkpoints/*
 .ipynb_checkpoints/*
 __pycache__/*
+bot.py
+config.json
